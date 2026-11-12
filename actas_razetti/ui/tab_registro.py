@@ -21,6 +21,8 @@ from typing import Any, Callable
 import customtkinter as ctk
 from tkcalendar import Calendar
 
+from utils.iconos import crear_icono_calendario
+
 
 class TabRegistro(ctk.CTkFrame):
     """
@@ -166,8 +168,8 @@ class TabRegistro(ctk.CTkFrame):
         return combo
 
     def _crear_tarjeta_formulario(self) -> None:
-        """Construye la tarjeta principal con las secciones del acta."""
-        tarjeta = ctk.CTkFrame(
+        """Construye la tarjeta principal desplazable con las secciones del acta."""
+        tarjeta = ctk.CTkScrollableFrame(
             self,
             corner_radius=12,
             fg_color=("#FFFFFF", "#1E1E1E"),
@@ -182,36 +184,35 @@ class TabRegistro(ctk.CTkFrame):
         # =====================================================================
         sec_libro = self._crear_seccion(tarjeta, "Datos del Libro", fila=0)
         for col in range(4):
-            sec_libro.grid_columnconfigure(col, weight=0)
-        sec_libro.grid_columnconfigure(4, weight=1)
+            sec_libro.grid_columnconfigure(col, weight=1, uniform="libro_cols")
 
         col_acta = ctk.CTkFrame(sec_libro, fg_color="transparent")
-        col_acta.grid(row=1, column=0, sticky="w", padx=(14, 10), pady=(0, 12))
-        self._crear_etiqueta(col_acta, "No. Acta:").pack(anchor="w", pady=(0, 4))
-        self.entry_acta = self._crear_entry(col_acta, width=100)
-        self.entry_acta.pack()
+        col_acta.grid(row=1, column=0, sticky="ew", padx=(14, 8), pady=(0, 8))
+        self._crear_etiqueta(col_acta, "No. Acta:").pack(anchor="w", pady=(0, 3))
+        self.entry_acta = self._crear_entry(col_acta)
+        self.entry_acta.pack(fill="x")
 
         col_libro = ctk.CTkFrame(sec_libro, fg_color="transparent")
-        col_libro.grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(0, 12))
-        self._crear_etiqueta(col_libro, "Libro:").pack(anchor="w", pady=(0, 4))
-        self.entry_libro = self._crear_entry(col_libro, width=80)
-        self.entry_libro.pack()
+        col_libro.grid(row=1, column=1, sticky="ew", padx=(4, 8), pady=(0, 8))
+        self._crear_etiqueta(col_libro, "Libro:").pack(anchor="w", pady=(0, 3))
+        self.entry_libro = self._crear_entry(col_libro)
+        self.entry_libro.pack(fill="x")
 
         col_folio = ctk.CTkFrame(sec_libro, fg_color="transparent")
-        col_folio.grid(row=1, column=2, sticky="w", padx=(0, 10), pady=(0, 12))
-        self._crear_etiqueta(col_folio, "Folio:").pack(anchor="w", pady=(0, 4))
-        self.entry_folio = self._crear_entry(col_folio, width=80)
-        self.entry_folio.pack()
+        col_folio.grid(row=1, column=2, sticky="ew", padx=(4, 8), pady=(0, 8))
+        self._crear_etiqueta(col_folio, "Folio:").pack(anchor="w", pady=(0, 3))
+        self.entry_folio = self._crear_entry(col_folio)
+        self.entry_folio.pack(fill="x")
 
         col_anio = ctk.CTkFrame(sec_libro, fg_color="transparent")
-        col_anio.grid(row=1, column=3, sticky="w", padx=(0, 14), pady=(0, 12))
-        self._crear_etiqueta(col_anio, "Año:").pack(anchor="w", pady=(0, 4))
-        self.entry_anio = self._crear_entry(col_anio, width=80)
-        self.entry_anio.pack()
+        col_anio.grid(row=1, column=3, sticky="ew", padx=(4, 14), pady=(0, 8))
+        self._crear_etiqueta(col_anio, "Año:").pack(anchor="w", pady=(0, 3))
+        self.entry_anio = self._crear_entry(col_anio)
+        self.entry_anio.pack(fill="x")
 
         col_fecha_pres = ctk.CTkFrame(sec_libro, fg_color="transparent")
-        col_fecha_pres.grid(row=1, column=4, sticky="ew", padx=(0, 14), pady=(0, 12))
-        self._crear_etiqueta(col_fecha_pres, "Fecha de Presentación:").pack(anchor="w", pady=(0, 4))
+        col_fecha_pres.grid(row=2, column=0, columnspan=2, sticky="ew", padx=(14, 8), pady=(0, 10))
+        self._crear_etiqueta(col_fecha_pres, "Fecha de Presentación:").pack(anchor="w", pady=(0, 3))
         sub_fecha_pres, self.entry_fecha_presentacion = self._crear_campo_fecha(col_fecha_pres)
         sub_fecha_pres.pack(fill="x")
 
@@ -261,10 +262,10 @@ class TabRegistro(ctk.CTkFrame):
         sub_fecha_nac.pack(fill="x")
 
         col_hora_nac = ctk.CTkFrame(sec_nino, fg_color="transparent")
-        col_hora_nac.grid(row=2, column=1, sticky="w", padx=(0, 12), pady=(0, 12))
+        col_hora_nac.grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=(0, 12))
         self._crear_etiqueta(col_hora_nac, "Hora de Nacimiento:").pack(anchor="w", pady=(0, 4))
-        self.entry_hora_nac = self._crear_entry(col_hora_nac, width=100, placeholder="HH:MM AM/PM")
-        self.entry_hora_nac.pack(anchor="w")
+        self.entry_hora_nac = self._crear_entry(col_hora_nac, placeholder="HH:MM AM/PM")
+        self.entry_hora_nac.pack(fill="x")
 
         col_parto = ctk.CTkFrame(sec_nino, fg_color="transparent")
         col_parto.grid(row=2, column=2, sticky="ew", padx=(0, 14), pady=(0, 12))
@@ -293,16 +294,10 @@ class TabRegistro(ctk.CTkFrame):
         self.entry_ciudad.pack(fill="x")
 
         col_recinto = ctk.CTkFrame(sec_lugar, fg_color="transparent")
-        col_recinto.grid(row=1, column=2, sticky="ew", padx=(0, 14), pady=(0, 8))
+        col_recinto.grid(row=1, column=2, sticky="ew", padx=(0, 14), pady=(0, 12))
         self._crear_etiqueta(col_recinto, "Recinto:").pack(anchor="w", pady=(0, 4))
         self.entry_recinto = self._crear_entry(col_recinto, placeholder="Ej. Hospital Dr. Luis Razetti")
         self.entry_recinto.pack(fill="x")
-
-        col_obs = ctk.CTkFrame(sec_lugar, fg_color="transparent")
-        col_obs.grid(row=2, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 12))
-        self._crear_etiqueta(col_obs, "Observaciones (opcional):").pack(anchor="w", pady=(0, 4))
-        self.entry_observaciones = self._crear_entry(col_obs, placeholder="Notas o aclaratorias del libro físico")
-        self.entry_observaciones.pack(fill="x")
 
     def _crear_campo_fecha(self, parent: Any) -> tuple[ctk.CTkFrame, ctk.CTkEntry]:
         """Crea un campo compuesto de fecha (Entry YYYY-MM-DD + botón calendario 📅)."""
@@ -311,18 +306,24 @@ class TabRegistro(ctk.CTkFrame):
         entry = self._crear_entry(frame_compuesto, placeholder="YYYY-MM-DD")
         entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
+        if not hasattr(self, "_icono_calendario"):
+            self._icono_calendario = crear_icono_calendario(
+                color=("#1E293B", "#F1F5F9"),
+                size=(22, 22),
+            )
+
         btn_cal = ctk.CTkButton(
             frame_compuesto,
-            text="📅",
+            text="",
+            image=self._icono_calendario,
             width=45,
             height=45,
-            font=("Segoe UI", 16),
             fg_color=("#E2E8F0", "#333333"),
             hover_color=("#CBD5E1", "#444444"),
-            text_color=("#1E293B", "#F8FAFC"),
             border_width=1,
             border_color=("#CBD5E1", "#444444"),
             corner_radius=8,
+            cursor="hand2",
         )
         btn_cal.configure(command=lambda e=entry, b=btn_cal: self._abrir_calendario(e, b))
         btn_cal.pack(side="right")
@@ -440,7 +441,6 @@ class TabRegistro(ctk.CTkFrame):
             self.entry_estado,
             self.entry_ciudad,
             self.entry_recinto,
-            self.entry_observaciones,
         )
         for entry in entradas:
             entry.bind("<FocusIn>", lambda _e, w=entry: w.configure(border_color=self.COLOR_BORDE_ACTIVO, border_width=2))
@@ -490,10 +490,6 @@ class TabRegistro(ctk.CTkFrame):
         recinto = self.entry_recinto.get().strip()
         if recinto:
             datos["recinto"] = recinto
-
-        observaciones = self.entry_observaciones.get().strip()
-        if observaciones or self._id_acta_edicion is not None:
-            datos["observaciones"] = observaciones or None
 
         return datos
 
@@ -546,7 +542,6 @@ class TabRegistro(ctk.CTkFrame):
             (self.entry_estado, "estado"),
             (self.entry_ciudad, "ciudad"),
             (self.entry_recinto, "recinto"),
-            (self.entry_observaciones, "observaciones"),
         )
         for widget, clave in mapeo_entries:
             val = datos.get(clave)
@@ -577,7 +572,6 @@ class TabRegistro(ctk.CTkFrame):
             self.entry_estado,
             self.entry_ciudad,
             self.entry_recinto,
-            self.entry_observaciones,
         ):
             entry.delete(0, "end")
 

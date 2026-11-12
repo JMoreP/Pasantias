@@ -20,6 +20,7 @@ from tkcalendar import Calendar
 from ui.tab_detalle import TabDetalle
 from ui.tab_registro import TabRegistro
 from utils.iconos import (
+    crear_icono_calendario,
     crear_icono_documento_plus,
     crear_icono_limpiar,
     crear_icono_lupa,
@@ -46,6 +47,9 @@ class VentanaConsulta(ctk.CTk):
         self._esta_cargando: bool = False
         self._popup_calendario: tk.Toplevel | None = None
         self.vista_actual: str = "Consulta"
+        self._pagina_actual: int = 1
+        self._total_paginas: int = 1
+        self._debounce_busqueda_id: str | None = None
 
         # 1. Configuración de Ventana
         self.title("CONSULTA DE ACTAS DE PRESENTACION")
@@ -533,7 +537,7 @@ class VentanaConsulta(ctk.CTk):
             self.entry_desde,
             self.entry_hasta,
         ):
-            entry.bind("<Return>", lambda _event: self._ejecutar_busqueda())
+            entry.bind("<Return>", lambda _event: self._solicitar_busqueda_debounced())
 
     def _crear_campo_fecha_moderno(
         self, parent: Any
@@ -555,18 +559,24 @@ class VentanaConsulta(ctk.CTk):
         )
         entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
+        if not hasattr(self, "_icono_calendario"):
+            self._icono_calendario = crear_icono_calendario(
+                color=("#1E293B", "#F1F5F9"),
+                size=(22, 22),
+            )
+
         btn_cal = ctk.CTkButton(
             frame_compuesto,
-            text="📅",
+            text="",
+            image=self._icono_calendario,
             width=45,
             height=45,
-            font=("Segoe UI", 16),
             fg_color=("#E2E8F0", "#333333"),
             hover_color=("#CBD5E1", "#444444"),
-            text_color=("#1E293B", "#F8FAFC"),
             border_width=1,
             border_color=("#CBD5E1", "#444444"),
             corner_radius=8,
+            cursor="hand2",
         )
         btn_cal.configure(command=lambda e=entry, b=btn_cal: self._abrir_calendario(e, b))
         btn_cal.pack(side="right")
@@ -704,18 +714,61 @@ class VentanaConsulta(ctk.CTk):
         self.tree.bind("<Double-1>", self._on_doble_click_fila)
 
     def _crear_barra_estado(self, parent: Any) -> None:
-        """Barra de estado situada en la base de la vista Consulta."""
-        frame_estado = ctk.CTkFrame(parent, height=28, fg_color="transparent")
+        """Barra de estado y controles de paginación en la base de la vista Consulta."""
+        frame_estado = ctk.CTkFrame(parent, height=36, fg_color="transparent")
         frame_estado.grid(row=3, column=0, sticky="ew", padx=28, pady=(0, 12))
 
         self.label_estado = ctk.CTkLabel(
             frame_estado,
             text="0 actas encontradas",
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 12, "bold"),
             text_color=("#64748B", "#94A3B8"),
             anchor="w",
         )
         self.label_estado.pack(side="left")
+
+        frame_paginacion = ctk.CTkFrame(frame_estado, fg_color="transparent")
+        frame_paginacion.pack(side="right")
+
+        self.btn_anterior = ctk.CTkButton(
+            frame_paginacion,
+            text="← Anterior",
+            width=105,
+            height=30,
+            corner_radius=6,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#E2E8F0", "#2B2B2B"),
+            hover_color=("#CBD5E1", "#3A3A3A"),
+            text_color=("#0F172A", "#E2E8F0"),
+            state="disabled",
+            cursor="hand2",
+            command=self._ir_pagina_anterior,
+        )
+        self.btn_anterior.pack(side="left", padx=(0, 8))
+
+        self.label_pagina = ctk.CTkLabel(
+            frame_paginacion,
+            text="Página 1 de 1",
+            font=("Segoe UI", 12, "bold"),
+            text_color=("#334155", "#CBD5E1"),
+        )
+        self.label_pagina.pack(side="left", padx=6)
+
+        self.btn_siguiente = ctk.CTkButton(
+            frame_paginacion,
+            text="Siguiente →",
+            width=105,
+            height=30,
+            corner_radius=6,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#E2E8F0", "#2B2B2B"),
+            hover_color=("#CBD5E1", "#3A3A3A"),
+            text_color=("#0F172A", "#E2E8F0"),
+            state="disabled",
+            cursor="hand2",
+            command=self._ir_pagina_siguiente,
+        )
+        self.btn_siguiente.pack(side="left", padx=(8, 0))
 
     def _configurar_accesibilidad_focus(self) -> None:
         """Asigna anillos de foco azul a todos los CTkEntry de Consulta."""
@@ -778,18 +831,48 @@ class VentanaConsulta(ctk.CTk):
             "fecha_hasta": self.entry_hasta.get().strip(),
         }
 
+    def _solicitar_busqueda_debounced(self) -> None:
+        """Aplica debounce de 150ms para evitar ráfagas repetidas al pulsar Enter."""
+        if self._debounce_busqueda_id is not None:
+            self.after_cancel(self._debounce_busqueda_id)
+        self._debounce_busqueda_id = self.after(150, self._ejecutar_busqueda_desde_timer)
+
+    def _ejecutar_busqueda_desde_timer(self) -> None:
+        self._debounce_busqueda_id = None
+        self._ejecutar_busqueda()
+
     def _ejecutar_busqueda(self) -> None:
         if self._esta_cargando:
             return
+
+        if self._debounce_busqueda_id is not None:
+            self.after_cancel(self._debounce_busqueda_id)
+            self._debounce_busqueda_id = None
 
         self.establecer_estado_cargando(True)
         filtros = self._construir_filtros()
 
         try:
             if self.controlador:
-                self.controlador.buscar(filtros)
+                self.controlador.buscar(filtros, pagina=1)
         finally:
             self.establecer_estado_cargando(False)
+
+    def _ir_pagina_anterior(self) -> None:
+        if not self._esta_cargando and self._pagina_actual > 1 and self.controlador:
+            self.establecer_estado_cargando(True)
+            try:
+                self.controlador.cambiar_pagina(self._pagina_actual - 1)
+            finally:
+                self.establecer_estado_cargando(False)
+
+    def _ir_pagina_siguiente(self) -> None:
+        if not self._esta_cargando and self._pagina_actual < self._total_paginas and self.controlador:
+            self.establecer_estado_cargando(True)
+            try:
+                self.controlador.cambiar_pagina(self._pagina_actual + 1)
+            finally:
+                self.establecer_estado_cargando(False)
 
     def _ejecutar_limpieza(self) -> None:
         if self.controlador:
@@ -833,12 +916,20 @@ class VentanaConsulta(ctk.CTk):
         """Muestra cuadro modal informativo."""
         messagebox.showinfo("Información", mensaje, parent=self)
 
-    def pintar_resultados(self, lista: list[dict]) -> None:
-        """Puebla el Treeview con zebra striping y actualiza el conteo de resultados."""
+    def pintar_resultados(
+        self,
+        lista: list[dict],
+        total: int | None = None,
+        pagina: int = 1,
+        total_paginas: int = 1,
+    ) -> None:
+        """
+        Puebla el Treeview únicamente con el lote de la página actual (hasta 50 filas),
+        actualiza el conteo global y habilita/deshabilita los controles de paginación.
+        """
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        total = len(lista)
         for indice, acta in enumerate(lista):
             tag_color = "par" if indice % 2 == 0 else "impar"
             valores = (
@@ -850,16 +941,26 @@ class VentanaConsulta(ctk.CTk):
             )
             self.tree.insert("", "end", values=valores, tags=(tag_color,))
 
-        if total == 1:
+        total_global = len(lista) if total is None else total
+        self._pagina_actual = max(1, pagina)
+        self._total_paginas = max(1, total_paginas)
+
+        if total_global == 1:
             self.label_estado.configure(text="1 acta encontrada")
         else:
-            self.label_estado.configure(text=f"{total} actas encontradas")
+            self.label_estado.configure(text=f"{total_global:,} actas encontradas")
+
+        self.label_pagina.configure(text=f"Página {self._pagina_actual} de {self._total_paginas}")
+        self.btn_anterior.configure(state="normal" if self._pagina_actual > 1 else "disabled")
+        self.btn_siguiente.configure(
+            state="normal" if self._pagina_actual < self._total_paginas else "disabled"
+        )
 
         self._actualizar_estilos_tabla()
         self.establecer_estado_cargando(False)
 
     def limpiar_formulario(self) -> None:
-        """Restablece los inputs de Consulta, desmarca 'Todas' y vacía la tabla."""
+        """Restablece los inputs de Consulta, la paginación, desmarca 'Todas' y vacía la tabla."""
         self.entry_acta.delete(0, "end")
         self.var_todas.set(False)
         self.entry_ci.delete(0, "end")
@@ -871,5 +972,10 @@ class VentanaConsulta(ctk.CTk):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        self._pagina_actual = 1
+        self._total_paginas = 1
         self.label_estado.configure(text="0 actas encontradas")
+        self.label_pagina.configure(text="Página 1 de 1")
+        self.btn_anterior.configure(state="disabled")
+        self.btn_siguiente.configure(state="disabled")
         self.entry_acta.focus_set()

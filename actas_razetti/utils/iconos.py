@@ -269,3 +269,44 @@ def crear_icono_copiar(
         ctx.stroke()
 
     return _generar_ctk_image_dual(_dibujar, color, size)
+
+
+def crear_icono_calendario(
+    color: ColorParam = ("#1E293B", "#F1F5F9"),
+    size: tuple[int, int] = (22, 22),
+) -> ctk.CTkImage:
+    """Genera un ícono vectorial estilo Lucide 'calendar-days' para selectores de fecha."""
+    def _dibujar(ctx: cairo.Context) -> None:
+        # Anillas superiores
+        ctx.move_to(8.0, 2.5)
+        ctx.line_to(8.0, 6.0)
+        ctx.stroke()
+
+        ctx.move_to(16.0, 2.5)
+        ctx.line_to(16.0, 6.0)
+        ctx.stroke()
+
+        # Marco redondeado del calendario
+        r = 2.0
+        x0, y0, x1, y1 = 3.5, 4.5, 20.5, 21.5
+        ctx.new_sub_path()
+        ctx.arc(x1 - r, y0 + r, r, -math.pi / 2.0, 0.0)
+        ctx.arc(x1 - r, y1 - r, r, 0.0, math.pi / 2.0)
+        ctx.arc(x0 + r, y1 - r, r, math.pi / 2.0, math.pi)
+        ctx.arc(x0 + r, y0 + r, r, math.pi, 3.0 * math.pi / 2.0)
+        ctx.close_path()
+        ctx.stroke()
+
+        # Línea divisoria de cabecera
+        ctx.move_to(3.5, 10.0)
+        ctx.line_to(20.5, 10.0)
+        ctx.stroke()
+
+        # Puntos de días (cuadrícula 3x2)
+        for dy in (14.0, 17.8):
+            for dx in (8.0, 12.0, 16.0):
+                ctx.move_to(dx, dy)
+                ctx.line_to(dx + 0.05, dy)
+                ctx.stroke()
+
+    return _generar_ctk_image_dual(_dibujar, color, size)

@@ -4,8 +4,9 @@ Capa: Lógica de Negocio (Service en MVC).
 
 Responsabilidad:
 - Aplicar reglas del negocio, validaciones de integridad y normalización de datos.
+- Orquestar búsquedas paginadas (por defecto 50 registros por página) para escalar
+  sin degradar el rendimiento de la interfaz ni la base de datos.
 - Desacoplar la vista y el controlador del acceso directo a la base de datos.
-- Interactuar con ActaRepositorio mediante inyección de dependencias.
 """
 
 from datetime import datetime
@@ -22,6 +23,7 @@ class ActaServicio:
 
     SEXOS_PERMITIDOS = {"niño", "niña"}
     TIPOS_PARTO_PERMITIDOS = {"Único", "Gemelos", "Mellizos", "Múltiple"}
+    POR_PAGINA_DEFECTO = 50
 
     def __init__(self, repositorio: ActaRepositorio | None = None) -> None:
         """
@@ -29,14 +31,9 @@ class ActaServicio:
         """
         self.repositorio = repositorio or ActaRepositorio()
 
-    def buscar(self, filtros: dict[str, Any] | None = None) -> list[dict]:
+    def _limpiar_y_validar_filtros(self, filtros: dict[str, Any] | None = None) -> dict[str, Any]:
         """
-        Aplica validaciones de negocio y normalizaciones a los filtros antes de buscar.
-
-        Reglas:
-        - Si viene 'presentante_cedula', se normaliza mediante utils.cedula.normalizar_cedula.
-        - Valida que fecha_desde <= fecha_hasta si ambas están presentes.
-        - Descarta filtros con valor vacío o None para realizar búsqueda amplia.
+        Normaliza y valida los filtros de búsqueda antes de consultar el repositorio.
         """
         filtros_originales = filtros or {}
         filtros_limpios: dict[str, Any] = {}
@@ -60,21 +57,72 @@ class ActaServicio:
         fecha_desde = filtros_limpios.get("fecha_desde")
         fecha_hasta = filtros_limpios.get("fecha_hasta")
 
-        if fecha_desde and fecha_hasta:
+        if fecha_desde:
             try:
                 f_desde = datetime.strptime(str(fecha_desde), "%Y-%m-%d")
             except ValueError as error:
                 raise ValueError("La fecha 'Desde' debe tener formato YYYY-MM-DD") from error
+        else:
+            f_desde = None
 
+        if fecha_hasta:
             try:
                 f_hasta = datetime.strptime(str(fecha_hasta), "%Y-%m-%d")
             except ValueError as error:
                 raise ValueError("La fecha 'Hasta' debe tener formato YYYY-MM-DD") from error
+        else:
+            f_hasta = None
 
-            if f_desde > f_hasta:
-                raise ValueError("La fecha 'Desde' no puede ser posterior a 'Hasta'")
+        if f_desde and f_hasta and f_desde > f_hasta:
+            raise ValueError("La fecha 'Desde' no puede ser posterior a 'Hasta'")
 
-        return self.repositorio.buscar(filtros_limpios)
+        return filtros_limpios
+
+    def buscar(
+        self,
+        filtros: dict[str, Any] | None = None,
+        limite: int | None = None,
+        offset: int = 0,
+    ) -> list[dict]:
+        """
+        Aplica validaciones de negocio a los filtros y retorna los registros
+        aplicando límite y desplazamiento opcionales.
+        """
+        filtros_limpios = self._limpiar_y_validar_filtros(filtros)
+        return self.repositorio.buscar(filtros_limpios, limite=limite, offset=offset)
+
+    def buscar_paginado(
+        self,
+        filtros: dict[str, Any] | None = None,
+        pagina: int = 1,
+        por_pagina: int = POR_PAGINA_DEFECTO,
+    ) -> dict[str, Any]:
+        """
+        Ejecuta una búsqueda paginada calculando el total de coincidencias,
+        total de páginas y el lote exacto usando LIMIT ? OFFSET ?.
+        """
+        por_pagina_valido = max(1, int(por_pagina))
+        pagina_solicitada = max(1, int(pagina))
+
+        filtros_limpios = self._limpiar_y_validar_filtros(filtros)
+        total = self.repositorio.contar_filtrados(filtros_limpios)
+        total_paginas = max(1, (total + por_pagina_valido - 1) // por_pagina_valido)
+        pagina_actual = min(pagina_solicitada, total_paginas)
+        offset = (pagina_actual - 1) * por_pagina_valido
+
+        resultados = self.repositorio.buscar(
+            filtros_limpios,
+            limite=por_pagina_valido,
+            offset=offset,
+        )
+
+        return {
+            "resultados": resultados,
+            "total": total,
+            "pagina": pagina_actual,
+            "por_pagina": por_pagina_valido,
+            "total_paginas": total_paginas,
+        }
 
     def _validar_y_limpiar_datos(self, datos: dict[str, Any]) -> dict[str, Any]:
         """
@@ -204,8 +252,8 @@ class ActaServicio:
             return None
         return self.repositorio.obtener_por_id(int(id_acta))
 
-    def listar_todas(self) -> list[dict]:
+    def listar_todas(self, limite: int | None = None, offset: int = 0) -> list[dict]:
         """
-        Retorna la lista de todas las actas registradas en el sistema.
+        Retorna la lista de actas registradas (con paginación opcional).
         """
-        return self.repositorio.buscar({})
+        return self.repositorio.buscar({}, limite=limite, offset=offset)

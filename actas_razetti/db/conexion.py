@@ -1,6 +1,7 @@
 """
 Módulo de conexión y gestión de base de datos SQLite.
-Provee un context manager para manejar transacciones y cierres de conexión de forma segura.
+Provee un context manager seguro con modo WAL, timeouts de concurrencia
+y control estricto de transacciones (commit/rollback/close).
 """
 
 import sqlite3
@@ -28,29 +29,28 @@ def conexion() -> Generator[sqlite3.Connection, None, None]:
     Context manager para interactuar con la base de datos SQLite.
 
     Comportamiento:
-    - Asegura la creación del directorio db/ si no existe.
-    - Activa PRAGMA foreign_keys = ON en cada sesión.
-    - Configura row_factory = sqlite3.Row para acceso asociativo a columnas.
-    - Realiza commit automático si el bloque finaliza sin errores.
-    - Realiza rollback automático si ocurre una excepción no controlada.
-    - Cierra siempre la conexión al salir del contexto.
-
-    Uso:
-        with conexion() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT ...")
+    - Activa PRAGMA journal_mode = WAL y synchronous = NORMAL para alta
+      concurrencia y velocidad de lectura/escritura.
+    - Configura busy_timeout = 5000 ms para evitar bloqueos transitorios.
+    - Activa PRAGMA foreign_keys = ON y row_factory = sqlite3.Row.
+    - Ejecuta commit() únicamente si hay una transacción pendiente.
+    - Ejecuta rollback() ante cualquier excepción y cierra siempre la conexión.
     """
     ruta = obtener_ruta_db()
-    conn = sqlite3.connect(str(ruta))
+    conn = sqlite3.connect(str(ruta), timeout=5.0)
     conn.row_factory = sqlite3.Row
 
     try:
-        # Activar soporte de claves foráneas
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+        conn.execute("PRAGMA busy_timeout = 5000;")
         conn.execute("PRAGMA foreign_keys = ON;")
         yield conn
-        conn.commit()
+        if conn.in_transaction:
+            conn.commit()
     except Exception:
-        conn.rollback()
+        if conn.in_transaction:
+            conn.rollback()
         raise
     finally:
         conn.close()

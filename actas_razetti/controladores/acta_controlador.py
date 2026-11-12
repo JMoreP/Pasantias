@@ -5,7 +5,7 @@ Capa: Control / Orquestación (Controller en MVC).
 Responsabilidad:
 - Recibir las acciones y eventos generados por la Vista principal y sus subvistas.
 - Orquestar la navegación interna entre vistas ("Consulta", "Registro", "Detalle").
-- Delegar las operaciones CRUD (búsqueda, registro, edición, eliminación) a ActaServicio.
+- Gestionar la paginación (50 registros por lote) al buscar, crear, editar o eliminar.
 - Gestionar excepciones de negocio sin exponer SQL ni widgets directamente.
 """
 
@@ -14,8 +14,10 @@ from typing import Any
 
 class ActaControlador:
     """
-    Controlador para la gestión y navegación entre vistas de actas de presentación.
+    Controlador para la gestión, paginación y navegación entre vistas de actas.
     """
+
+    POR_PAGINA = 50
 
     def __init__(self, vista: Any, servicio: Any) -> None:
         """
@@ -26,20 +28,39 @@ class ActaControlador:
         """
         self.vista = vista
         self.servicio = servicio
+        self._ultimos_filtros: dict[str, Any] = {}
+        self._pagina_actual: int = 1
 
-    def buscar(self, filtros: dict[str, Any]) -> None:
+    def buscar(self, filtros: dict[str, Any], pagina: int = 1) -> None:
         """
-        Ejecuta la búsqueda de actas aplicando los filtros indicados.
+        Ejecuta la búsqueda paginada de actas aplicando los filtros indicados.
         Captura cualquier ValueError arrojado por el servicio y lo notifica a la vista.
         """
         try:
-            resultados = self.servicio.buscar(filtros)
-            self.vista.pintar_resultados(resultados)
+            respuesta = self.servicio.buscar_paginado(
+                filtros,
+                pagina=pagina,
+                por_pagina=self.POR_PAGINA,
+            )
+            self._ultimos_filtros = dict(filtros)
+            self._pagina_actual = respuesta["pagina"]
+            self.vista.pintar_resultados(
+                respuesta["resultados"],
+                total=respuesta["total"],
+                pagina=respuesta["pagina"],
+                total_paginas=respuesta["total_paginas"],
+            )
         except ValueError as error:
             self.vista.mostrar_error(str(error))
 
+    def cambiar_pagina(self, nueva_pagina: int) -> None:
+        """Solicita la página indicada reutilizando los últimos filtros aplicados."""
+        self.buscar(self._ultimos_filtros, pagina=nueva_pagina)
+
     def limpiar_filtros(self) -> None:
-        """Restablece el formulario de filtros y la tabla en la vista Consulta."""
+        """Restablece el formulario de filtros, la paginación y la tabla."""
+        self._ultimos_filtros = {}
+        self._pagina_actual = 1
         self.vista.limpiar_formulario()
 
     def volver_a_consulta(self) -> None:
@@ -59,7 +80,7 @@ class ActaControlador:
         """
         Registra un acta mediante el servicio de negocio.
         - Si tiene éxito: muestra confirmación, limpia el formulario,
-          regresa a 'Consulta' y actualiza la tabla principal.
+          regresa a 'Consulta' y actualiza la tabla paginada.
         - Si ocurre ValueError: muestra el error y mantiene activa la vista 'Registro'.
         """
         try:
@@ -67,8 +88,7 @@ class ActaControlador:
             self.vista.mostrar_info("Acta registrada exitosamente.")
             self.vista.tab_registro.preparar_nuevo()
             self.vista.mostrar_vista("Consulta")
-            resultados = self.servicio.listar_todas()
-            self.vista.pintar_resultados(resultados)
+            self.buscar({}, pagina=1)
         except ValueError as error:
             self.vista.tab_registro.mostrar_error(str(error))
 
@@ -84,9 +104,6 @@ class ActaControlador:
     def actualizar_acta(self, id_acta: int, datos: dict[str, Any]) -> None:
         """
         Actualiza un acta existente mediante el servicio de negocio.
-        - Si tiene éxito: recarga el expediente en Detalle, actualiza la tabla
-          de Consulta, regresa a Detalle y muestra confirmación.
-        - Si ocurre ValueError: muestra el error y permanece en el formulario.
         """
         try:
             self.servicio.actualizar(id_acta, datos)
@@ -94,8 +111,7 @@ class ActaControlador:
             self.vista.tab_registro.preparar_nuevo()
             if acta_actualizada:
                 self.vista.tab_detalle.cargar_datos(acta_actualizada)
-            resultados = self.servicio.listar_todas()
-            self.vista.pintar_resultados(resultados)
+            self.buscar(self._ultimos_filtros, pagina=self._pagina_actual)
             self.vista.mostrar_vista("Detalle")
             self.vista.mostrar_info("Acta actualizada exitosamente.")
         except ValueError as error:
@@ -104,15 +120,14 @@ class ActaControlador:
     def eliminar_acta(self, id_acta: int) -> None:
         """
         Elimina el acta indicada, limpia el detalle, regresa a Consulta
-        y actualiza la tabla principal.
+        y actualiza la tabla paginada.
         """
         try:
             eliminada = self.servicio.eliminar(id_acta)
             if eliminada:
                 self.vista.tab_detalle.limpiar()
                 self.vista.mostrar_vista("Consulta")
-                resultados = self.servicio.listar_todas()
-                self.vista.pintar_resultados(resultados)
+                self.buscar(self._ultimos_filtros, pagina=self._pagina_actual)
                 self.vista.mostrar_info("Acta eliminada correctamente.")
             else:
                 self.vista.mostrar_error("No se pudo eliminar el acta porque ya no existe.")
