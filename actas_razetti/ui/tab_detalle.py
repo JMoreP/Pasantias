@@ -72,7 +72,7 @@ class TabDetalle(ctk.CTkFrame):
             corner_radius=12,
             fg_color=("#FFFFFF", "#1E1E1E"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#333333"),
         )
         self.tarjeta.grid(row=1, column=0, sticky="nsew", padx=24, pady=(0, 20))
         self.tarjeta.grid_columnconfigure(0, weight=1)
@@ -159,9 +159,9 @@ class TabDetalle(ctk.CTkFrame):
         seccion = ctk.CTkFrame(
             parent,
             corner_radius=8,
-            fg_color=("#F8FAFC", "#252525"),
+            fg_color=("#F1F5F9", "#252525"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#3A3A3A"),
         )
         pad_top = 18 if fila == 0 else 7
         seccion.grid(row=fila, column=0, sticky="ew", padx=18, pady=(pad_top, 7))

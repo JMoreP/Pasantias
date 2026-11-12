@@ -27,7 +27,7 @@ class TabRegistro(ctk.CTkFrame):
     Vista para capturar y validar el registro de una nueva acta de presentación.
     """
 
-    COLOR_BORDE_INACTIVO = ("#CBD5E1", "#444444")
+    COLOR_BORDE_INACTIVO = ("#94A3B8", "#52525B")
     COLOR_BORDE_ACTIVO = ("#2563EB", "#3B82F6")
 
     def __init__(
@@ -92,9 +92,9 @@ class TabRegistro(ctk.CTkFrame):
         seccion = ctk.CTkFrame(
             parent,
             corner_radius=8,
-            fg_color=("#F8FAFC", "#252525"),
+            fg_color=("#F1F5F9", "#252525"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#3A3A3A"),
         )
         seccion.grid(row=fila, column=0, sticky="ew", padx=18, pady=7)
 
@@ -118,7 +118,7 @@ class TabRegistro(ctk.CTkFrame):
         kwargs: dict[str, Any] = {
             "height": 45,
             "font": ("Segoe UI", 14),
-            "border_width": 1,
+            "border_width": 2,
             "corner_radius": 8,
             "border_color": self.COLOR_BORDE_INACTIVO,
             "fg_color": ("#FFFFFF", "#2B2B2B"),
@@ -149,7 +149,7 @@ class TabRegistro(ctk.CTkFrame):
             height=45,
             font=("Segoe UI", 14),
             dropdown_font=("Segoe UI", 14),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -171,7 +171,7 @@ class TabRegistro(ctk.CTkFrame):
             corner_radius=12,
             fg_color=("#FFFFFF", "#1E1E1E"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#333333"),
         )
         tarjeta.grid(row=1, column=0, sticky="nsew", padx=24, pady=(0, 12))
         tarjeta.grid_columnconfigure(0, weight=1)
@@ -313,6 +313,8 @@ class TabRegistro(ctk.CTkFrame):
             fg_color=("#E2E8F0", "#333333"),
             hover_color=("#CBD5E1", "#444444"),
             text_color=("#1E293B", "#F8FAFC"),
+            border_width=1,
+            border_color=("#CBD5E1", "#444444"),
             corner_radius=8,
         )
         btn_cal.configure(command=lambda e=entry, b=btn_cal: self._abrir_calendario(e, b))
@@ -433,7 +435,7 @@ class TabRegistro(ctk.CTkFrame):
         )
         for entry in entradas:
             entry.bind("<FocusIn>", lambda _e, w=entry: w.configure(border_color=self.COLOR_BORDE_ACTIVO, border_width=2))
-            entry.bind("<FocusOut>", lambda _e, w=entry: w.configure(border_color=self.COLOR_BORDE_INACTIVO, border_width=1))
+            entry.bind("<FocusOut>", lambda _e, w=entry: w.configure(border_color=self.COLOR_BORDE_INACTIVO, border_width=2))
 
     @staticmethod
     def _normalizar_hora(hora_raw: str) -> str:

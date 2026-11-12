@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Any
 import customtkinter as ctk
+from customtkinter.windows.widgets.core_rendering import DrawEngine
 from tkcalendar import Calendar
 
 from ui.tab_detalle import TabDetalle
@@ -30,12 +31,14 @@ class VentanaConsulta(ctk.CTk):
     Ventana principal del sistema con intercambio interno de vistas y tema Claro/Oscuro.
     """
 
-    COLOR_BORDE_INACTIVO = ("#CBD5E1", "#444444")
+    COLOR_BORDE_INACTIVO = ("#94A3B8", "#52525B")
     COLOR_BORDE_ACTIVO = ("#2563EB", "#3B82F6")
 
     def __init__(self) -> None:
         super().__init__()
 
+        # Vectorial nativo para esquinas continuas sin recortes en Linux/X11
+        DrawEngine.preferred_drawing_method = "circle_shapes"
         # Modo claro por defecto al arrancar
         ctk.set_appearance_mode("light")
 
@@ -46,7 +49,7 @@ class VentanaConsulta(ctk.CTk):
 
         # 1. Configuración de Ventana
         self.title("CONSULTA DE ACTAS DE PRESENTACION")
-        self.configure(fg_color=("#F0F2F5", "#121212"))
+        self.configure(fg_color=("#EEF2F6", "#121212"))
         self._centrar_ventana(ancho=1260, alto=860)
         self.minsize(1120, 750)
 
@@ -270,7 +273,7 @@ class VentanaConsulta(ctk.CTk):
             corner_radius=12,
             fg_color=("#FFFFFF", "#1E1E1E"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#333333"),
         )
         self.tarjeta_filtros.grid(row=1, column=0, sticky="ew", padx=24, pady=(0, 12))
 
@@ -298,7 +301,7 @@ class VentanaConsulta(ctk.CTk):
             width=150,
             height=45,
             font=("Segoe UI", 15),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -314,7 +317,7 @@ class VentanaConsulta(ctk.CTk):
             variable=self.var_todas,
             font=("Segoe UI", 14),
             text_color=("#334155", "#E2E8F0"),
-            border_color=("#CBD5E1", "#555555"),
+            border_color=("#64748B", "#64748B"),
             checkbox_width=22,
             checkbox_height=22,
             corner_radius=4,
@@ -326,9 +329,9 @@ class VentanaConsulta(ctk.CTk):
         box_presentante = ctk.CTkFrame(
             frame_formulario,
             corner_radius=8,
-            fg_color=("#F8FAFC", "#252525"),
+            fg_color=("#F1F5F9", "#252525"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#3A3A3A"),
         )
         box_presentante.grid(row=1, column=0, sticky="ew", padx=4, pady=6)
         box_presentante.grid_columnconfigure(0, weight=1)
@@ -358,7 +361,7 @@ class VentanaConsulta(ctk.CTk):
             col_ci,
             height=45,
             font=("Segoe UI", 15),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -381,7 +384,7 @@ class VentanaConsulta(ctk.CTk):
             col_nom_pres,
             height=45,
             font=("Segoe UI", 15),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -393,9 +396,9 @@ class VentanaConsulta(ctk.CTk):
         box_presentado = ctk.CTkFrame(
             frame_formulario,
             corner_radius=8,
-            fg_color=("#F8FAFC", "#252525"),
+            fg_color=("#F1F5F9", "#252525"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#3A3A3A"),
         )
         box_presentado.grid(row=2, column=0, sticky="ew", padx=4, pady=6)
         box_presentado.grid_columnconfigure(0, weight=2)
@@ -426,7 +429,7 @@ class VentanaConsulta(ctk.CTk):
             col_nom_nino,
             height=45,
             font=("Segoe UI", 15),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -537,7 +540,7 @@ class VentanaConsulta(ctk.CTk):
             frame_compuesto,
             height=45,
             font=("Segoe UI", 15),
-            border_width=1,
+            border_width=2,
             corner_radius=8,
             border_color=self.COLOR_BORDE_INACTIVO,
             fg_color=("#FFFFFF", "#2B2B2B"),
@@ -556,6 +559,8 @@ class VentanaConsulta(ctk.CTk):
             fg_color=("#E2E8F0", "#333333"),
             hover_color=("#CBD5E1", "#444444"),
             text_color=("#1E293B", "#F8FAFC"),
+            border_width=1,
+            border_color=("#CBD5E1", "#444444"),
             corner_radius=8,
         )
         btn_cal.configure(command=lambda e=entry, b=btn_cal: self._abrir_calendario(e, b))
@@ -644,7 +649,7 @@ class VentanaConsulta(ctk.CTk):
             corner_radius=12,
             fg_color=("#FFFFFF", "#1E1E1E"),
             border_width=1,
-            border_color=("#E2E8F0", "#333333"),
+            border_color=("#CBD5E1", "#333333"),
         )
         frame_tabla.grid(row=2, column=0, sticky="nsew", padx=24, pady=(0, 10))
         frame_tabla.grid_rowconfigure(0, weight=1)
@@ -725,7 +730,7 @@ class VentanaConsulta(ctk.CTk):
         widget.configure(border_color=self.COLOR_BORDE_ACTIVO, border_width=2)
 
     def _on_focus_out(self, widget: ctk.CTkEntry) -> None:
-        widget.configure(border_color=self.COLOR_BORDE_INACTIVO, border_width=1)
+        widget.configure(border_color=self.COLOR_BORDE_INACTIVO, border_width=2)
 
     def establecer_estado_cargando(self, cargando: bool) -> None:
         """Controla el feedback visual durante la búsqueda."""
