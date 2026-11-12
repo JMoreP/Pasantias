@@ -42,6 +42,7 @@ class TabRegistro(ctk.CTkFrame):
         self.controlador = controlador
         self._on_volver = on_volver
         self._popup_calendario: tk.Toplevel | None = None
+        self._id_acta_edicion: int | None = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -78,14 +79,14 @@ class TabRegistro(ctk.CTkFrame):
         )
         self.btn_volver.pack(side="left")
 
-        lbl_titulo = ctk.CTkLabel(
+        self.lbl_titulo = ctk.CTkLabel(
             frame_cabecera,
             text="Registrar Nueva Acta de Presentación",
             font=("Segoe UI", 22, "bold"),
             text_color=("#0F172A", "#F8FAFC"),
             anchor="w",
         )
-        lbl_titulo.pack(side="left", padx=(16, 0))
+        self.lbl_titulo.pack(side="left", padx=(16, 0))
 
     def _crear_seccion(self, parent: Any, titulo: str, fila: int) -> ctk.CTkFrame:
         """Crea una sección visual con borde sutil y encabezado homogéneo."""
@@ -292,10 +293,16 @@ class TabRegistro(ctk.CTkFrame):
         self.entry_ciudad.pack(fill="x")
 
         col_recinto = ctk.CTkFrame(sec_lugar, fg_color="transparent")
-        col_recinto.grid(row=1, column=2, sticky="ew", padx=(0, 14), pady=(0, 12))
+        col_recinto.grid(row=1, column=2, sticky="ew", padx=(0, 14), pady=(0, 8))
         self._crear_etiqueta(col_recinto, "Recinto:").pack(anchor="w", pady=(0, 4))
         self.entry_recinto = self._crear_entry(col_recinto, placeholder="Ej. Hospital Dr. Luis Razetti")
         self.entry_recinto.pack(fill="x")
+
+        col_obs = ctk.CTkFrame(sec_lugar, fg_color="transparent")
+        col_obs.grid(row=2, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 12))
+        self._crear_etiqueta(col_obs, "Observaciones (opcional):").pack(anchor="w", pady=(0, 4))
+        self.entry_observaciones = self._crear_entry(col_obs, placeholder="Notas o aclaratorias del libro físico")
+        self.entry_observaciones.pack(fill="x")
 
     def _crear_campo_fecha(self, parent: Any) -> tuple[ctk.CTkFrame, ctk.CTkEntry]:
         """Crea un campo compuesto de fecha (Entry YYYY-MM-DD + botón calendario 📅)."""
@@ -398,23 +405,24 @@ class TabRegistro(ctk.CTkFrame):
         popup.grab_set()
 
     def _crear_boton_guardar(self) -> None:
-        """Botón inferior principal para guardar el acta."""
+        """Botón inferior principal para guardar o actualizar el acta."""
         frame_acciones = ctk.CTkFrame(self, fg_color="transparent")
         frame_acciones.grid(row=2, column=0, sticky="ew", padx=24, pady=(0, 18))
 
-        btn_guardar = ctk.CTkButton(
+        self.btn_guardar = ctk.CTkButton(
             frame_acciones,
             text="Guardar Acta",
-            width=160,
+            width=165,
             height=45,
             corner_radius=8,
             font=("Segoe UI", 14, "bold"),
             fg_color=("#059669", "#059669"),
             hover_color=("#047857", "#047857"),
             text_color=("#FFFFFF", "#FFFFFF"),
+            cursor="hand2",
             command=self._ejecutar_guardado,
         )
-        btn_guardar.pack(side="right")
+        self.btn_guardar.pack(side="right")
 
     def _configurar_accesibilidad_focus(self) -> None:
         """Asigna anillos de foco azul a todos los CTkEntry."""
@@ -432,6 +440,7 @@ class TabRegistro(ctk.CTkFrame):
             self.entry_estado,
             self.entry_ciudad,
             self.entry_recinto,
+            self.entry_observaciones,
         )
         for entry in entradas:
             entry.bind("<FocusIn>", lambda _e, w=entry: w.configure(border_color=self.COLOR_BORDE_ACTIVO, border_width=2))
@@ -482,18 +491,75 @@ class TabRegistro(ctk.CTkFrame):
         if recinto:
             datos["recinto"] = recinto
 
+        observaciones = self.entry_observaciones.get().strip()
+        if observaciones or self._id_acta_edicion is not None:
+            datos["observaciones"] = observaciones or None
+
         return datos
 
     def _ejecutar_guardado(self) -> None:
-        """Delega el guardado de los datos al controlador."""
+        """Delega el registro o actualización de los datos al controlador."""
         datos = self._construir_datos()
-        if self.controlador:
+        if not self.controlador:
+            return
+        if self._id_acta_edicion is not None:
+            self.controlador.actualizar_acta(self._id_acta_edicion, datos)
+        else:
             self.controlador.guardar_acta(datos)
 
     def _ejecutar_volver(self) -> None:
-        """Regresa a la vista de Consulta."""
-        if self._on_volver:
+        """Regresa a Detalle si estaba editando o a Consulta si estaba registrando."""
+        if self._id_acta_edicion is not None and self.controlador:
+            self.preparar_nuevo()
+            self.controlador.volver_a_detalle()
+        elif self._on_volver:
             self._on_volver()
+
+    def preparar_nuevo(self) -> None:
+        """Restablece el formulario al modo creación de nueva acta."""
+        self._id_acta_edicion = None
+        self.lbl_titulo.configure(text="Registrar Nueva Acta de Presentación")
+        self.btn_guardar.configure(text="Guardar Acta")
+        self.limpiar_formulario()
+
+    def cargar_para_editar(self, datos: dict[str, Any]) -> None:
+        """Prellena el formulario con los datos de un acta existente para edición."""
+        self.limpiar_formulario()
+        self._id_acta_edicion = int(datos["id"])
+
+        numero_acta = datos.get("numero_acta") or "S/N"
+        anio = datos.get("anio") or "----"
+        self.lbl_titulo.configure(text=f"Editar Acta Nº {numero_acta} - {anio}")
+        self.btn_guardar.configure(text="Actualizar Acta")
+
+        mapeo_entries = (
+            (self.entry_acta, "numero_acta"),
+            (self.entry_libro, "numero_libro"),
+            (self.entry_folio, "numero_folio"),
+            (self.entry_anio, "anio"),
+            (self.entry_fecha_presentacion, "fecha_presentacion"),
+            (self.entry_ci, "presentante_cedula"),
+            (self.entry_presentante_nombres, "presentante_nombres"),
+            (self.entry_presentado_nombres, "presentado_nombres"),
+            (self.entry_fecha_nac, "presentado_fecha_nac"),
+            (self.entry_hora_nac, "presentado_hora_nac"),
+            (self.entry_estado, "estado"),
+            (self.entry_ciudad, "ciudad"),
+            (self.entry_recinto, "recinto"),
+            (self.entry_observaciones, "observaciones"),
+        )
+        for widget, clave in mapeo_entries:
+            val = datos.get(clave)
+            if val is not None and str(val).strip():
+                widget.insert(0, str(val).strip())
+
+        sexo = (datos.get("presentado_sexo") or "").strip()
+        self.combo_sexo.set(sexo if sexo in ("niño", "niña") else "")
+
+        tipo_parto = (datos.get("presentado_tipo_parto") or "").strip()
+        self.combo_tipo_parto.set(
+            tipo_parto if tipo_parto in ("Único", "Gemelos", "Mellizos", "Múltiple") else ""
+        )
 
     def limpiar_formulario(self) -> None:
         """Limpia todos los campos y restablece los selectores."""
@@ -511,6 +577,7 @@ class TabRegistro(ctk.CTkFrame):
             self.entry_estado,
             self.entry_ciudad,
             self.entry_recinto,
+            self.entry_observaciones,
         ):
             entry.delete(0, "end")
 

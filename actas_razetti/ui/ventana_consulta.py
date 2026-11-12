@@ -465,9 +465,9 @@ class VentanaConsulta(ctk.CTk):
         subframe_hasta, self.entry_hasta, self.btn_cal_hasta = self._crear_campo_fecha_moderno(col_hasta)
         subframe_hasta.pack(fill="x")
 
-        # Subframe Vertical de Botones CUADRADOS (120x120)
+        # Subframe Vertical de Botones Uniformes (136x112)
         frame_botones = ctk.CTkFrame(self.tarjeta_filtros, fg_color="transparent")
-        frame_botones.grid(row=0, column=1, sticky="ns", padx=(10, 20), pady=16)
+        frame_botones.grid(row=0, column=1, sticky="ns", padx=(10, 20), pady=12)
 
         self.icono_buscar = crear_icono_lupa(color="#FFFFFF", size=(28, 28))
         self.btn_buscar = ctk.CTkButton(
@@ -475,33 +475,37 @@ class VentanaConsulta(ctk.CTk):
             text="Buscar",
             image=self.icono_buscar,
             compound="top",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color=("#2563EB", "#2563EB"),
             hover_color=("#1D4ED8", "#1D4ED8"),
             text_color=("#FFFFFF", "#FFFFFF"),
-            width=120,
-            height=120,
-            corner_radius=8,
+            width=136,
+            height=112,
+            corner_radius=10,
+            cursor="hand2",
             command=self._ejecutar_busqueda,
         )
-        self.btn_buscar.pack(side="top", pady=10, fill="none")
+        self.btn_buscar.pack(side="top", pady=8, fill="x")
 
-        self.icono_limpiar = crear_icono_limpiar(color=("#0F172A", "#E2E8F0"), size=(28, 28))
+        self.icono_limpiar = crear_icono_limpiar(color=("#1E293B", "#F1F5F9"), size=(28, 28))
         self.btn_limpiar = ctk.CTkButton(
             frame_botones,
             text="Limpiar",
             image=self.icono_limpiar,
             compound="top",
-            font=("Segoe UI", 14, "bold"),
-            fg_color=("#E2E8F0", "#333333"),
-            hover_color=("#CBD5E1", "#444444"),
-            text_color=("#0F172A", "#E2E8F0"),
-            width=120,
-            height=120,
-            corner_radius=8,
+            font=("Segoe UI", 13, "bold"),
+            fg_color=("#F1F5F9", "#2B2B2B"),
+            hover_color=("#E2E8F0", "#3A3A3A"),
+            text_color=("#1E293B", "#F1F5F9"),
+            border_width=2,
+            border_color=("#CBD5E1", "#444444"),
+            width=136,
+            height=112,
+            corner_radius=10,
+            cursor="hand2",
             command=self._ejecutar_limpieza,
         )
-        self.btn_limpiar.pack(side="top", pady=10, fill="none")
+        self.btn_limpiar.pack(side="top", pady=8, fill="x")
 
         self.icono_registrar = crear_icono_documento_plus(color="#FFFFFF", size=(28, 28))
         self.btn_nuevo = ctk.CTkButton(
@@ -509,16 +513,17 @@ class VentanaConsulta(ctk.CTk):
             text="Registrar",
             image=self.icono_registrar,
             compound="top",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color=("#059669", "#059669"),
             hover_color=("#047857", "#047857"),
             text_color=("#FFFFFF", "#FFFFFF"),
-            width=120,
-            height=120,
-            corner_radius=8,
+            width=136,
+            height=112,
+            corner_radius=10,
+            cursor="hand2",
             command=self._ejecutar_nuevo,
         )
-        self.btn_nuevo.pack(side="top", pady=10, fill="none")
+        self.btn_nuevo.pack(side="top", pady=8, fill="x")
 
         for entry in (
             self.entry_acta,
@@ -736,7 +741,7 @@ class VentanaConsulta(ctk.CTk):
         """Controla el feedback visual durante la búsqueda."""
         self._esta_cargando = cargando
         if cargando:
-            self.btn_buscar.configure(state="disabled", text="Buscando...")
+            self.btn_buscar.configure(state="disabled", text="Buscar...")
             self.configure(cursor="watch")
         else:
             self.btn_buscar.configure(state="normal", text="Buscar")
