@@ -22,8 +22,11 @@ from ui.tab_registro import TabRegistro
 from utils.iconos import (
     crear_icono_calendario,
     crear_icono_documento_plus,
+    crear_icono_editar,
+    crear_icono_eliminar,
     crear_icono_limpiar,
     crear_icono_lupa,
+    crear_icono_ojo,
 )
 
 
@@ -202,7 +205,8 @@ class VentanaConsulta(ctk.CTk):
         self._crear_panel_tabla(self.vista_consulta)
         self._crear_barra_estado(self.vista_consulta)
 
-        # 2. Vista Registro
+        # 2. Vista
+        # Registro
         self.tab_registro = TabRegistro(
             self.contenedor_vistas,
             controlador=self.controlador,
@@ -212,6 +216,7 @@ class VentanaConsulta(ctk.CTk):
         # 3. Vista Detalle
         self.tab_detalle = TabDetalle(
             self.contenedor_vistas,
+            controlador=self.controlador,
             on_volver=lambda: self.mostrar_vista("Consulta"),
         )
 
@@ -713,8 +718,27 @@ class VentanaConsulta(ctk.CTk):
 
         self.tree.bind("<Double-1>", self._on_doble_click_fila)
 
+        # Menú contextual moderno para clic derecho sobre cualquier fila
+        self.menu_contextual = tk.Menu(self, tearoff=0)
+        self.menu_contextual.add_command(
+            label="  Ver Detalle",
+            command=self._ejecutar_ver_detalle_seleccion,
+        )
+        self.menu_contextual.add_command(
+            label="  Editar Acta",
+            command=self._ejecutar_editar_seleccion,
+        )
+        self.menu_contextual.add_separator()
+        self.menu_contextual.add_command(
+            label="  Eliminar Acta",
+            command=self._ejecutar_eliminar_seleccion,
+        )
+
+        self.tree.bind("<Button-3>", self._on_click_derecho_tabla)
+        self.tree.bind("<Button-2>", self._on_click_derecho_tabla)
+
     def _crear_barra_estado(self, parent: Any) -> None:
-        """Barra de estado y controles de paginación en la base de la vista Consulta."""
+        """Barra de estado, acciones rápidas y controles de paginación."""
         frame_estado = ctk.CTkFrame(parent, height=36, fg_color="transparent")
         frame_estado.grid(row=3, column=0, sticky="ew", padx=28, pady=(0, 12))
 
@@ -726,6 +750,66 @@ class VentanaConsulta(ctk.CTk):
             anchor="w",
         )
         self.label_estado.pack(side="left")
+
+        # Botones de acción directa para el acta seleccionada en la tabla
+        self.frame_acciones_tabla = ctk.CTkFrame(frame_estado, fg_color="transparent")
+        self.frame_acciones_tabla.pack(side="left", padx=(20, 0))
+
+        self.icono_ver_detalle = crear_icono_ojo(color=("#1E293B", "#F1F5F9"), size=(16, 16))
+        self.btn_ver_detalle = ctk.CTkButton(
+            self.frame_acciones_tabla,
+            text="Ver Detalle",
+            image=self.icono_ver_detalle,
+            compound="left",
+            width=115,
+            height=30,
+            corner_radius=6,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#F1F5F9", "#2B2B2B"),
+            hover_color=("#E2E8F0", "#3A3A3A"),
+            text_color=("#1E293B", "#F1F5F9"),
+            border_width=1,
+            border_color=("#CBD5E1", "#444444"),
+            cursor="hand2",
+            command=self._ejecutar_ver_detalle_seleccion,
+        )
+        self.btn_ver_detalle.pack(side="left", padx=(0, 8))
+
+        self.icono_editar_tabla = crear_icono_editar(color="#FFFFFF", size=(16, 16))
+        self.btn_editar_tabla = ctk.CTkButton(
+            self.frame_acciones_tabla,
+            text="Editar",
+            image=self.icono_editar_tabla,
+            compound="left",
+            width=95,
+            height=30,
+            corner_radius=6,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#2563EB", "#2563EB"),
+            hover_color=("#1D4ED8", "#1D4ED8"),
+            text_color="#FFFFFF",
+            cursor="hand2",
+            command=self._ejecutar_editar_seleccion,
+        )
+        self.btn_editar_tabla.pack(side="left", padx=(0, 8))
+
+        self.icono_eliminar_tabla = crear_icono_eliminar(color="#FFFFFF", size=(16, 16))
+        self.btn_eliminar_tabla = ctk.CTkButton(
+            self.frame_acciones_tabla,
+            text="Eliminar",
+            image=self.icono_eliminar_tabla,
+            compound="left",
+            width=100,
+            height=30,
+            corner_radius=6,
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#DC2626", "#DC2626"),
+            hover_color=("#B91C1C", "#B91C1C"),
+            text_color="#FFFFFF",
+            cursor="hand2",
+            command=self._ejecutar_eliminar_seleccion,
+        )
+        self.btn_eliminar_tabla.pack(side="left")
 
         frame_paginacion = ctk.CTkFrame(frame_estado, fg_color="transparent")
         frame_paginacion.pack(side="right")
@@ -898,6 +982,80 @@ class VentanaConsulta(ctk.CTk):
             if self.controlador:
                 self.controlador.abrir_detalle(id_acta)
 
+    def _obtener_item_seleccionado(self) -> tuple[int, tuple] | tuple[None, None]:
+        """Retorna el ID y los valores de la fila actualmente seleccionada en la tabla."""
+        seleccion = self.tree.selection()
+        if not seleccion:
+            return None, None
+        item_id = seleccion[0]
+        valores = self.tree.item(item_id, "values")
+        if valores and len(valores) > 0:
+            try:
+                return int(valores[0]), tuple(valores)
+            except (ValueError, TypeError):
+                return None, None
+        return None, None
+
+    def _ejecutar_ver_detalle_seleccion(self) -> None:
+        """Abre la vista Detalle con el acta seleccionada en la tabla."""
+        id_acta, _ = self._obtener_item_seleccionado()
+        if id_acta is None:
+            messagebox.showwarning(
+                "Seleccione un Acta",
+                "Por favor seleccione un acta de la tabla para ver su detalle.",
+                parent=self,
+            )
+            return
+        if self.controlador:
+            self.controlador.abrir_detalle(id_acta)
+
+    def _ejecutar_editar_seleccion(self) -> None:
+        """Abre el formulario en modo edición para el acta seleccionada."""
+        id_acta, _ = self._obtener_item_seleccionado()
+        if id_acta is None:
+            messagebox.showwarning(
+                "Seleccione un Acta",
+                "Por favor seleccione un acta de la tabla para editarla.",
+                parent=self,
+            )
+            return
+        if self.controlador:
+            self.controlador.editar_acta(id_acta, origen="consulta")
+
+    def _ejecutar_eliminar_seleccion(self) -> None:
+        """Confirma y elimina el acta seleccionada en la tabla."""
+        id_acta, valores = self._obtener_item_seleccionado()
+        if id_acta is None:
+            messagebox.showwarning(
+                "Seleccione un Acta",
+                "Por favor seleccione un acta de la tabla para eliminarla.",
+                parent=self,
+            )
+            return
+
+        numero_acta = valores[1] if valores and len(valores) > 1 else "S/N"
+        presentado = valores[3] if valores and len(valores) > 3 else "el presentado"
+
+        confirmado = messagebox.askyesno(
+            "Confirmar Eliminación",
+            f"¿Está seguro de que desea eliminar permanentemente el Acta Nº {numero_acta} de {presentado}?\n\nEsta acción no se puede deshacer.",
+            icon="warning",
+            parent=self,
+        )
+        if confirmado and self.controlador:
+            self.controlador.eliminar_acta(id_acta)
+
+    def _on_click_derecho_tabla(self, event: Any) -> None:
+        """Selecciona la fila bajo el cursor y despliega el menú contextual."""
+        item_id = self.tree.identify_row(event.y)
+        if item_id:
+            self.tree.selection_set(item_id)
+            self.tree.focus(item_id)
+            try:
+                self.menu_contextual.tk_popup(event.x_root, event.y_root)
+            finally:
+                self.menu_contextual.grab_release()
+
     # -------------------------------------------------------------------------
     # Métodos Públicos (Consumidos por el Controlador)
     # -------------------------------------------------------------------------
@@ -905,6 +1063,7 @@ class VentanaConsulta(ctk.CTk):
         """Asigna el controlador e inicializa la tabla en estado vacío."""
         self.controlador = controlador
         self.tab_registro.asignar_controlador(controlador)
+        self.tab_detalle.asignar_controlador(controlador)
         self.pintar_resultados([])
 
     def mostrar_error(self, mensaje: str) -> None:

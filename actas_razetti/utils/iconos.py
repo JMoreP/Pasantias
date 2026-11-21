@@ -271,6 +271,26 @@ def crear_icono_copiar(
     return _generar_ctk_image_dual(_dibujar, color, size)
 
 
+def crear_icono_ojo(
+    color: ColorParam = ("#1E293B", "#F1F5F9"),
+    size: tuple[int, int] = (16, 16),
+) -> ctk.CTkImage:
+    """Genera un ícono vectorial estilo Lucide 'eye' para ver detalle."""
+    def _dibujar(ctx: cairo.Context) -> None:
+        # Contorno del ojo
+        ctx.move_to(2.0, 12.0)
+        ctx.curve_to(6.0, 6.0, 18.0, 6.0, 22.0, 12.0)
+        ctx.curve_to(18.0, 18.0, 6.0, 18.0, 2.0, 12.0)
+        ctx.close_path()
+        ctx.stroke()
+
+        # Pupila central
+        ctx.arc(12.0, 12.0, 3.2, 0, 2 * math.pi)
+        ctx.stroke()
+
+    return _generar_ctk_image_dual(_dibujar, color, size)
+
+
 def crear_icono_calendario(
     color: ColorParam = ("#1E293B", "#F1F5F9"),
     size: tuple[int, int] = (22, 22),

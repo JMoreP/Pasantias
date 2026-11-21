@@ -14,10 +14,11 @@ Diseño y UX:
 """
 
 from datetime import datetime
+from tkinter import messagebox
 from typing import Any, Callable
 import customtkinter as ctk
 
-from utils.iconos import crear_icono_copiar
+from utils.iconos import crear_icono_copiar, crear_icono_editar, crear_icono_eliminar
 
 
 class TabDetalle(ctk.CTkFrame):
@@ -28,11 +29,13 @@ class TabDetalle(ctk.CTkFrame):
     def __init__(
         self,
         master: Any,
+        controlador: Any = None,
         on_volver: Callable[[], None] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(master, fg_color="transparent", **kwargs)
 
+        self.controlador = controlador
         self._on_volver = on_volver
         self._datos_actuales: dict[str, Any] = {}
         self._labels_valores: dict[str, ctk.CTkLabel] = {}
@@ -45,8 +48,12 @@ class TabDetalle(ctk.CTkFrame):
         self._crear_cabecera()
         self._crear_tarjeta_principal()
 
+    def asignar_controlador(self, controlador: Any) -> None:
+        """Asigna o actualiza la referencia al controlador de la aplicación."""
+        self.controlador = controlador
+
     def _crear_cabecera(self) -> None:
-        """Barra superior con '← Volver', título dinámico y botón de copia rápida."""
+        """Barra superior con '← Volver', título dinámico y botones de acción rápida."""
         frame_cabecera = ctk.CTkFrame(self, fg_color="transparent")
         frame_cabecera.grid(row=0, column=0, sticky="ew", padx=24, pady=(8, 10))
 
@@ -76,13 +83,50 @@ class TabDetalle(ctk.CTkFrame):
         )
         self.lbl_titulo_acta.pack(side="left", padx=(16, 0))
 
+        # Botón Eliminar (Peligro - Rojo)
+        self.icono_eliminar = crear_icono_eliminar(color="#FFFFFF", size=(18, 18))
+        self.btn_eliminar = ctk.CTkButton(
+            frame_cabecera,
+            text="Eliminar",
+            image=self.icono_eliminar,
+            compound="left",
+            width=115,
+            height=38,
+            corner_radius=8,
+            font=("Segoe UI", 13, "bold"),
+            fg_color=("#DC2626", "#DC2626"),
+            hover_color=("#B91C1C", "#B91C1C"),
+            text_color="#FFFFFF",
+            cursor="hand2",
+            command=self._ejecutar_eliminar,
+        )
+
+        # Botón Editar (Primario - Azul)
+        self.icono_editar = crear_icono_editar(color="#FFFFFF", size=(18, 18))
+        self.btn_editar = ctk.CTkButton(
+            frame_cabecera,
+            text="Editar",
+            image=self.icono_editar,
+            compound="left",
+            width=110,
+            height=38,
+            corner_radius=8,
+            font=("Segoe UI", 13, "bold"),
+            fg_color=("#2563EB", "#2563EB"),
+            hover_color=("#1D4ED8", "#1D4ED8"),
+            text_color="#FFFFFF",
+            cursor="hand2",
+            command=self._ejecutar_editar,
+        )
+
+        # Botón Copiar Ficha (Neutro)
         self.icono_copiar = crear_icono_copiar(color=("#1E293B", "#F1F5F9"), size=(18, 18))
         self.btn_copiar = ctk.CTkButton(
             frame_cabecera,
             text="Copiar Ficha",
             image=self.icono_copiar,
             compound="left",
-            width=142,
+            width=135,
             height=38,
             corner_radius=8,
             font=("Segoe UI", 13, "bold"),
@@ -368,19 +412,50 @@ class TabDetalle(ctk.CTkFrame):
 
         self.frame_vacio.grid_forget()
         self.frame_contenido.grid(row=0, column=0, sticky="nsew")
-        self.btn_copiar.pack(side="right")
+
+        # Mostrar botones de acción en la cabecera
+        self.btn_eliminar.pack(side="right", padx=(8, 0))
+        self.btn_editar.pack(side="right", padx=(8, 0))
+        self.btn_copiar.pack(side="right", padx=(8, 0))
 
     def limpiar(self) -> None:
         """Restaura el estado inicial vacío de la vista Detalle."""
         self._datos_actuales = {}
         self.lbl_titulo_acta.configure(text="Detalle del Acta")
         self.btn_copiar.pack_forget()
+        self.btn_editar.pack_forget()
+        self.btn_eliminar.pack_forget()
         self.frame_contenido.grid_forget()
         self.frame_vacio.grid(row=0, column=0, sticky="nsew")
 
     def _ejecutar_volver(self) -> None:
         if self._on_volver:
             self._on_volver()
+
+    def _ejecutar_editar(self) -> None:
+        """Abre el acta en el formulario en modo edición."""
+        id_acta = self._datos_actuales.get("id")
+        if id_acta and self.controlador:
+            self.controlador.editar_acta(int(id_acta), origen="detalle")
+
+    def _ejecutar_eliminar(self) -> None:
+        """Solicita confirmación y elimina el acta actual."""
+        id_acta = self._datos_actuales.get("id")
+        if not id_acta or not self.controlador:
+            return
+
+        numero_acta = self._datos_actuales.get("numero_acta") or "S/N"
+        anio = self._datos_actuales.get("anio") or "----"
+        presentado = self._datos_actuales.get("presentado_nombres") or "el presentado"
+
+        confirmado = messagebox.askyesno(
+            "Confirmar Eliminación",
+            f"¿Está seguro de que desea eliminar permanentemente el Acta Nº {numero_acta} ({anio}) de {presentado}?\n\nEsta acción no se puede deshacer.",
+            icon="warning",
+            parent=self.winfo_toplevel(),
+        )
+        if confirmado:
+            self.controlador.eliminar_acta(int(id_acta))
 
     def _copiar_ficha(self) -> None:
         """Copia un resumen legible del acta al portapapeles."""

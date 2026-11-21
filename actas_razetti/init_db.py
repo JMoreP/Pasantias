@@ -85,10 +85,30 @@ DATOS_SEMILLA = [
 ]
 
 
-def inicializar_bd() -> None:
+def vaciar_bd() -> int:
     """
-    Crea las tablas, los índices y siembra los registros de ejemplo.
-    Es una operación idempotente (no duplica registros gracias al índice único).
+    Elimina todas las actas de la base de datos, resetea el contador
+    autoincremental a 1 y compacta el archivo SQLite (VACUUM).
+    Retorna la cantidad de registros eliminados.
+    """
+    ruta_db = obtener_ruta_db()
+    print(f"[+] Conectando a la base de datos SQLite en:\n    {ruta_db}")
+    with conexion() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM actas_presentacion;")
+        total = cursor.fetchone()[0]
+        cursor.execute("DELETE FROM actas_presentacion;")
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'actas_presentacion';")
+        conn.commit()
+        cursor.execute("VACUUM;")
+        print(f"[✔] Base de datos vaciada con éxito. Se eliminaron {total} registros y se reseteó el contador a 1.")
+        return total
+
+
+def inicializar_bd(sembrar: bool = False) -> None:
+    """
+    Crea las tablas y los índices si no existen.
+    Si sembrar=True, siembra los registros de ejemplo de forma idempotente.
     """
     ruta_db = obtener_ruta_db()
     print(f"[+] Conectando a la base de datos SQLite en:\n    {ruta_db}")
@@ -105,50 +125,56 @@ def inicializar_bd() -> None:
         for sql_idx in DDL_INDICES:
             cursor.execute(sql_idx)
 
-        # 3. Sembrar datos de prueba
-        print("[+] Sembrando registros iniciales...")
+        # 3. Sembrar datos de prueba si se solicita explícitamente
         filas_insertadas = 0
-        for acta in DATOS_SEMILLA:
-            # Usamos INSERT OR IGNORE para respetar la restricción única idx_libro_folio_anio
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO actas_presentacion (
-                    numero_acta,
-                    numero_libro,
-                    numero_folio,
-                    anio,
-                    fecha_presentacion,
-                    presentado_nombres,
-                    presentado_sexo,
-                    presentado_fecha_nac,
-                    presentado_hora_nac,
-                    presentado_tipo_parto,
-                    presentante_cedula,
-                    presentante_nombres,
-                    observaciones
-                ) VALUES (
-                    :numero_acta,
-                    :numero_libro,
-                    :numero_folio,
-                    :anio,
-                    :fecha_presentacion,
-                    :presentado_nombres,
-                    :presentado_sexo,
-                    :presentado_fecha_nac,
-                    :presentado_hora_nac,
-                    :presentado_tipo_parto,
-                    :presentante_cedula,
-                    :presentante_nombres,
-                    :observaciones
-                );
-                """,
-                acta,
-            )
-            if cursor.rowcount > 0:
-                filas_insertadas += 1
+        if sembrar:
+            print("[+] Sembrando registros iniciales de prueba...")
+            for acta in DATOS_SEMILLA:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO actas_presentacion (
+                        numero_acta,
+                        numero_libro,
+                        numero_folio,
+                        anio,
+                        fecha_presentacion,
+                        presentado_nombres,
+                        presentado_sexo,
+                        presentado_fecha_nac,
+                        presentado_hora_nac,
+                        presentado_tipo_parto,
+                        presentante_cedula,
+                        presentante_nombres,
+                        observaciones
+                    ) VALUES (
+                        :numero_acta,
+                        :numero_libro,
+                        :numero_folio,
+                        :anio,
+                        :fecha_presentacion,
+                        :presentado_nombres,
+                        :presentado_sexo,
+                        :presentado_fecha_nac,
+                        :presentado_hora_nac,
+                        :presentado_tipo_parto,
+                        :presentante_cedula,
+                        :presentante_nombres,
+                        :observaciones
+                    );
+                    """,
+                    acta,
+                )
+                if cursor.rowcount > 0:
+                    filas_insertadas += 1
+            print(f"[✔] Nuevas filas insertadas: {filas_insertadas}.")
 
-        print(f"[✔] Inicialización completada. Nuevas filas insertadas: {filas_insertadas}.")
+        print("[✔] Estructura e índices de base de datos listos.")
 
 
 if __name__ == "__main__":
-    inicializar_bd()
+    if "--limpiar" in sys.argv or "--vaciar" in sys.argv:
+        vaciar_bd()
+    elif "--semilla" in sys.argv or "--sembrar" in sys.argv:
+        inicializar_bd(sembrar=True)
+    else:
+        inicializar_bd(sembrar=False)

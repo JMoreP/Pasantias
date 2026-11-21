@@ -504,24 +504,31 @@ class TabRegistro(ctk.CTkFrame):
             self.controlador.guardar_acta(datos)
 
     def _ejecutar_volver(self) -> None:
-        """Regresa a Detalle si estaba editando o a Consulta si estaba registrando."""
-        if self._id_acta_edicion is not None and self.controlador:
+        """Regresa a Detalle o Consulta según el origen de navegación."""
+        if self._id_acta_edicion is not None:
+            origen = getattr(self, "_origen_navegacion", "detalle")
             self.preparar_nuevo()
-            self.controlador.volver_a_detalle()
+            if self.controlador:
+                if origen == "consulta":
+                    self.controlador.volver_a_consulta()
+                else:
+                    self.controlador.volver_a_detalle()
         elif self._on_volver:
             self._on_volver()
 
     def preparar_nuevo(self) -> None:
         """Restablece el formulario al modo creación de nueva acta."""
         self._id_acta_edicion = None
+        self._origen_navegacion = "consulta"
         self.lbl_titulo.configure(text="Registrar Nueva Acta de Presentación")
         self.btn_guardar.configure(text="Guardar Acta")
         self.limpiar_formulario()
 
-    def cargar_para_editar(self, datos: dict[str, Any]) -> None:
+    def cargar_para_editar(self, datos: dict[str, Any], origen: str = "detalle") -> None:
         """Prellena el formulario con los datos de un acta existente para edición."""
         self.limpiar_formulario()
         self._id_acta_edicion = int(datos["id"])
+        self._origen_navegacion = origen
 
         numero_acta = datos.get("numero_acta") or "S/N"
         anio = datos.get("anio") or "----"

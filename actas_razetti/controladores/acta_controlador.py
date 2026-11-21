@@ -92,11 +92,11 @@ class ActaControlador:
         except ValueError as error:
             self.vista.tab_registro.mostrar_error(str(error))
 
-    def editar_acta(self, id_acta: int) -> None:
+    def editar_acta(self, id_acta: int, origen: str = "detalle") -> None:
         """Carga los datos de un acta existente en el formulario en modo edición."""
         acta = self.servicio.obtener(id_acta)
         if acta:
-            self.vista.tab_registro.cargar_para_editar(acta)
+            self.vista.tab_registro.cargar_para_editar(acta, origen=origen)
             self.vista.mostrar_vista("Registro")
         else:
             self.vista.mostrar_error(f"No se encontró el acta #{id_acta}.")
